@@ -1,6 +1,6 @@
 Name:    miniflux
-Version: 2.0.15-rc1
-Release: 1.0
+Version: 2.0.14
+Release: 1%{dist}
 Summary: Minimalist feed reader
 URL: https://miniflux.app/
 License: ASL 2.0

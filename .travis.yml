@@ -14,5 +14,12 @@ before_install:
 script:
   - jshint ui/static/js/*.js
   - make lint
-  - make test
-  - make integration-test
+  - make linux-amd64
+deploy:
+  provider: releases
+  api_key: "$GH_TOKEN"
+  file:
+    - "miniflux-linux-amd64"
+  skip_cleanup: true
+  on:
+    tags: true

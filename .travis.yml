@@ -12,16 +12,17 @@ go:
 before_install:
   - npm install -g jshint
   - go get -u golang.org/x/lint/golint
-  - docker build -t miniflux/rpmbuild -f rpmbuild/Dockerfile .
 script:
   - jshint ui/static/js/*.js
   - make lint
   - make linux-amd64
-  - export VER=`git describe --abbrev=0 --tags`
-  - sed -i 's|^Version:.*$|Version: '"${VER}"'|' rpmbuild/SPECS/miniflux.spec
+before_deploy:
   - cp miniflux.1 LICENSE ChangeLog miniflux-linux-amd64 rpmbuild/SOURCES/
+  - export VER=`git describe --abbrev=0 --tags`
+  - "sed -i \"s|^Version:.*$|Version: ${VER}|\" rpmbuild/SPECS/miniflux.spec"
+  - docker build -t miniflux/rpmbuild -f rpmbuild/Dockerfile .
   - docker run --rm -v $(pwd)/rpmbuild:/root/rpmbuild  miniflux/rpmbuild rpmbuild -bb /root/rpmbuild/SPECS/miniflux.spec
-  - cp rpmbuild/RPMS/*.rpm ./
+  - find ./rpmbuild -name '*.rpm' -exec cp {} ./ \;
 deploy:
   provider: releases
   api_key: "$GH_TOKEN"

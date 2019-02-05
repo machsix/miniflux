@@ -13,7 +13,9 @@ before_install:
   - npm install -g jshint
   - go get -u golang.org/x/lint/golint
 script:
-  - jshint ui/static/js/*.js
+  - cd ui/static/js
+  - jshint *.js
+  - cd ../../../
   - make lint
   - make linux-amd64
   - export TRAVIS_TAG=`git describe --abbrev=0 --tags`

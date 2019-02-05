@@ -140,7 +140,7 @@ a:hover {
 @media (min-width: 600px) {
     body {
         margin: auto;
-        max-width: 750px;
+        max-width: 950px;
     }
 
     .header {
@@ -273,7 +273,8 @@ select {
 input[type="search"],
 input[type="url"],
 input[type="password"],
-input[type="text"] {
+input[type="text"],
+textarea {
     border: 1px solid #ccc;
     padding: 3px;
     line-height: 20px;
@@ -287,11 +288,17 @@ input[type="text"] {
 input[type="search"]:focus,
 input[type="url"]:focus,
 input[type="password"]:focus,
-input[type="text"]:focus {
+input[type="text"]:focus,
+textarea:focus {
     color: #000;
     border-color: rgba(82, 168, 236, 0.8);
     outline: 0;
     box-shadow: 0 0 8px rgba(82, 168, 236, 0.6);
+}
+
+textarea {
+    min-width: 100%;
+    min-height: 400px;
 }
 
 input[type="checkbox"] {
@@ -436,12 +443,12 @@ a.button {
 }
 
 /* Modals */
-#modal-left {
+.modal {
     position: fixed;
     top: 0;
-    left: 0;
     bottom: 0;
     width: 360px;
+    max-width: 80%;
     overflow: auto;
     background: #f0f0f0;
     box-shadow: 2px 0 5px 0 #ccc;
@@ -449,9 +456,17 @@ a.button {
     padding-top: 30px;
 }
 
-#modal-left h3 {
+.modal h3 {
     font-weight: 400;
     margin: 0;
+}
+
+.modal-left {
+    left: 0;
+}
+
+.modal-right {
+    right: 0;
 }
 
 .btn-close-modal {
@@ -469,6 +484,11 @@ a.button {
     color: #999;
 }
 
+body.modal-open {
+    position: fixed;
+    width: 100%;
+}
+
 /* Keyboard Shortcuts */
 .keyboard-shortcuts li {
     margin-left: 25px;
@@ -480,6 +500,26 @@ a.button {
 
 .keyboard-shortcuts p {
     line-height: 1.9em;
+}
+
+/* Action Menus */
+.action-menus {
+    position: absolute;
+    width: 100%;
+    bottom: 100px;
+}
+
+.action-menus ul {
+    margin: 2.5em 0;
+}
+
+.action-menus li {
+    margin: 0.5em 1em;
+    list-style-type: none;
+    font-size: 1.3em;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
 }
 
 /* Login form */
@@ -614,8 +654,36 @@ a.button {
     overflow-x: hidden;
 }
 
-.hide-read-items .item-status-read {
+.hide-read-items .item-status-read:not(.current-item) {
     display: none;
+}
+
+.thumbnail {
+    display: none;
+}
+
+/* masonry view */
+.masonry .item, .masonry .item-sizer {
+    width: 100%;
+}
+
+@media (min-width: 600px) {
+    .masonry .item-sizer, .masonry .item {
+        width: calc((100% - 20px)/3);
+    }
+}
+
+.masonry .thumbnail{
+    display: inherit;
+}
+
+.masonry .thumbnail img {
+    width: 100%;
+    padding-top: 10px;
+}
+
+.masonry .item-status-read .thumbnail{
+    opacity: 0.2;
 }
 
 /* Feeds list */

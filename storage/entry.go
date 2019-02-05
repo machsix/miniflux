@@ -48,9 +48,15 @@ func (s *Storage) UpdateEntryContent(entry *model.Entry) error {
 		return fmt.Errorf(`unable to update content of entry #%d: %v`, entry.ID, err)
 	}
 
+	err = s.UpdateEntriesMedia(model.Entries{entry})
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf(`unable to update entry medias %q: %v`, entry.URL, err)
+	}
+
 	query := `
 		UPDATE entries
-		SET document_vectors = to_tsvector(substring(title || ' ' || coalesce(content, '') for 1000000))
+		SET document_vectors = setweight(to_tsvector(substring(coalesce(title, '') for 1000000)), 'A') || setweight(to_tsvector(substring(coalesce(content, '') for 1000000)), 'B')
 		WHERE id=$1 AND user_id=$2
 	`
 	_, err = tx.Exec(query, entry.ID, entry.UserID)
@@ -62,13 +68,13 @@ func (s *Storage) UpdateEntryContent(entry *model.Entry) error {
 	return tx.Commit()
 }
 
-// createEntry add a new entry.
-func (s *Storage) createEntry(entry *model.Entry) error {
+// CreateEntry add a new entry.
+func (s *Storage) CreateEntry(entry *model.Entry) error {
 	query := `
 		INSERT INTO entries
 		(title, hash, url, comments_url, published_at, content, author, user_id, feed_id, document_vectors)
 		VALUES
-		($1, $2, $3, $4, $5, $6, $7, $8, $9, to_tsvector(substring($1 || ' ' || coalesce($6, '') for 1000000)))
+		($1, $2, $3, $4, $5, $6, $7, $8, $9, setweight(to_tsvector(substring(coalesce($1, '') for 1000000)), 'A') || setweight(to_tsvector(substring(coalesce($6, '') for 1000000)), 'B'))
 		RETURNING id, status
 	`
 	err := s.db.QueryRow(
@@ -86,6 +92,11 @@ func (s *Storage) createEntry(entry *model.Entry) error {
 
 	if err != nil {
 		return fmt.Errorf("unable to create entry %q (feed #%d): %v", entry.URL, entry.FeedID, err)
+	}
+
+	err = s.CreateEntriesMedia(model.Entries{entry})
+	if err != nil {
+		return fmt.Errorf("unable to create entry medias records %q (feed #%d): %v", entry.URL, entry.FeedID, err)
 	}
 
 	for i := 0; i < len(entry.Enclosures); i++ {
@@ -107,7 +118,7 @@ func (s *Storage) updateEntry(entry *model.Entry) error {
 	query := `
 		UPDATE entries SET
 		title=$1, url=$2, comments_url=$3, content=$4, author=$5,
-		document_vectors=to_tsvector(substring($1 || ' ' || coalesce($4, '') for 1000000))
+		document_vectors = setweight(to_tsvector(substring(coalesce($1, '') for 1000000)), 'A') || setweight(to_tsvector(substring(coalesce($4, '') for 1000000)), 'B')
 		WHERE user_id=$6 AND feed_id=$7 AND hash=$8
 		RETURNING id
 	`
@@ -132,11 +143,46 @@ func (s *Storage) updateEntry(entry *model.Entry) error {
 		enclosure.EntryID = entry.ID
 	}
 
+	err = s.UpdateEntriesMedia(model.Entries{entry})
+	if err != nil {
+		return fmt.Errorf(`unable to update entry medias %q: %v`, entry.URL, err)
+	}
 	return s.UpdateEnclosures(entry.Enclosures)
 }
 
-// entryExists checks if an entry already exists based on its hash when refreshing a feed.
-func (s *Storage) entryExists(entry *model.Entry) bool {
+// UpdateEntryByID updates an entry when an entry is edited.
+func (s *Storage) UpdateEntryByID(entry *model.Entry) error {
+	query := `
+		UPDATE entries SET
+		title=$1, url=$2, comments_url=$3, content=$4, author=$5, feed_id=$6,
+		document_vectors = setweight(to_tsvector(substring(coalesce($1, '') for 1000000)), 'A') || setweight(to_tsvector(substring(coalesce($4, '') for 1000000)), 'B')
+		WHERE user_id=$7 AND id=$8
+	`
+	_, err := s.db.Exec(
+		query,
+		entry.Title,
+		entry.URL,
+		entry.CommentsURL,
+		entry.Content,
+		entry.Author,
+		entry.FeedID,
+		entry.UserID,
+		entry.ID,
+	)
+
+	if err != nil {
+		return fmt.Errorf(`unable to update entry %d: %v`, entry.ID, err)
+	}
+
+	err = s.UpdateEntriesMedia(model.Entries{entry})
+	if err != nil {
+		return fmt.Errorf(`unable to update entry medias %d: %v`, entry.ID, err)
+	}
+	return nil
+}
+
+// EntryExists checks if an entry already exists based on its hash when refreshing a feed.
+func (s *Storage) EntryExists(entry *model.Entry) bool {
 	var result int
 	query := `SELECT count(*) as c FROM entries WHERE user_id=$1 AND feed_id=$2 AND hash=$3`
 	s.db.QueryRow(query, entry.UserID, entry.FeedID, entry.Hash).Scan(&result)
@@ -164,12 +210,12 @@ func (s *Storage) UpdateEntries(userID, feedID int64, entries model.Entries, upd
 		entry.UserID = userID
 		entry.FeedID = feedID
 
-		if s.entryExists(entry) {
+		if s.EntryExists(entry) {
 			if updateExistingEntries {
 				err = s.updateEntry(entry)
 			}
 		} else {
-			err = s.createEntry(entry)
+			err = s.CreateEntry(entry)
 		}
 
 		if err != nil {
